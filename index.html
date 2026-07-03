@@ -34,28 +34,6 @@
     <script>
         function openPage(id) {
             document.getElementById('home').style.display = 'none';
-            var pages = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'];
-            for(var i=0; i<pages.length; i++) {
-                var targetPage = document.getElementById(pages[i]);
-                if (targetPage) { targetPage.style.display = 'none'; }
-            }
-            var activePage = document.getElementById(id);
-            if (activePage) { activePage.style.display = 'block'; }
-            window.scrollTo(0,0);
-        }
-
-        function goHome(id) {
-            var targetPage = document.getElementById(id);
-            if (targetPage) { targetPage.style.display = 'none'; }
-            document.getElementById('home').style.display = 'grid';
-        }
-        
-        // ปุ่ม 1: ค้นหาข้อมูลอัจฉริยะ (ล็อกเดิม)
-        function fetchTcasData() {
-            var keyword = document.getElementById('search-keyword').value;
-            var res = document.getElementById('res-search');
-            if(!keyword) { alert('กรุณากรอกชื่อคณะก่อนนะอ้วน'); return; }
-            res.innerHTML = "⏳ <i>ระบบกำลังดึงข้อมูลเรียลไทม์จำลองสถิติจาก ทปอ. (mytcas.com)...</i>";
             setTimeout(function() {
                 res.innerHTML = "<b>📡 ผลการสืบค้นข้อมูลจำลองสถิติสำหรับ '" + keyword + "':</b><br>" +
                     "• <b>จำนวนรับรวมทุกรอบ:</b> 145 ที่นั่ง (รอบ 1: 45 | รอบ 2: 40 | รอบ 3: 60)<br>" +
