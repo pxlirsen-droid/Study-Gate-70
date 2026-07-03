@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>TCAS Hub 2026 - ระบบจัดการข้อมูลเด็กเตรียมสอบอัจฉริยะ</title>
+    <style>
+        body { font-family: 'Tahoma', sans-serif; background: #f0f4f8; padding: 20px; color: #333; line-height: 1.6; }
+        .container { max-width: 900px; margin: 0 auto; text-align: center; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; margin: 30px auto; }
+        .btn { background: white; border: 1px solid #e2e8f0; padding: 30px 20px; border-radius: 20px; cursor: pointer; font-size: 16px; font-weight: bold; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); transition: all 0.2s; text-align: left; width: 100%; box-sizing: border-box; }
+        .btn:hover { border-color: #4f46e5; background: #f5f3ff; transform: translateY(-3px); }
+        .btn span { font-size: 32px; display: block; margin-bottom: 10px; }
+        .btn p { margin: 8px 0 0 0; font-size: 13px; color: #64748b; font-weight: normal; }
+        .page { display: none; background: white; padding: 35px; border-radius: 24px; max-width: 750px; margin: 20px auto; border: 1px solid #e2e8f0; text-align: left; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        .back { color: #4f46e5; cursor: pointer; display: inline-block; margin-top: 25px; font-weight: bold; text-decoration: underline; }
+        
+        input[type="text"], input[type="number"], select, textarea { width: 100%; padding: 12px; margin: 8px 0 18px 0; border: 1px solid #cbd5e1; border-radius: 10px; box-sizing: border-box; font-size: 14px; font-family: inherit; }
+        textarea { height: 100px; resize: none; }
+        .action-btn { background: #4f46e5; color: white; border: none; padding: 12px 20px; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 14px; width: 100%; }
+        .action-btn:hover { background: #4338ca; }
+        .result-box { background: #f8fafc; padding: 20px; border-radius: 12px; margin-top: 20px; border-left: 5px solid #4f46e5; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+        th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: left; }
+        th { background: #f1f5f9; color: #1e293b; }
+        .badge { background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; }
+        
+        /* สไตล์ของมินิกราฟแท่งจำลองสำหรับปุ่ม 4 */
+        .chart-container { margin-top: 20px; background: #fff; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; }
+        .chart-row { margin: 12px 0; }
+        .chart-label { font-size: 13px; font-weight: bold; margin-bottom: 4px; display: flex; justify-content: space-between; }
+        .chart-bar-bg { background: #e2e8f0; height: 18px; border-radius: 9px; overflow: hidden; width: 100%; }
+        .chart-bar-fill { height: 100%; width: 0%; border-radius: 9px; transition: width 0.5s ease-out; }
+    </style>
+    <script>
+        function openPage(id) {
+            document.getElementById('home').style.display = 'none';
+            var pages = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'];
+            for(var i=0; i<pages.length; i++) {
+                var targetPage = document.getElementById(pages[i]);
+                if (targetPage) { targetPage.style.display = 'none'; }
+            }
+            var activePage = document.getElementById(id);
+            if (activePage) { activePage.style.display = 'block'; }
+            window.scrollTo(0,0);
+        }
+
+        function goHome(id) {
+            var targetPage = document.getElementById(id);
+            if (targetPage) { targetPage.style.display = 'none'; }
+            document.getElementById('home').style.display = 'grid';
+        }
+        
+        // ปุ่ม 1: ค้นหาข้อมูลอัจฉริยะ (ล็อกเดิม)
+        function fetchTcasData() {
+            var keyword = document.getElementById('search-keyword').value;
+            var res = document.getElementById('res-search');
+            if(!keyword) { alert('กรุณากรอกชื่อคณะก่อนนะอ้วน'); return; }
+            res.innerHTML = "⏳ <i>ระบบกำลังดึงข้อมูลเรียลไทม์จำลองสถิติจาก ทปอ. (mytcas.com)...</i>";
+            setTimeout(function() {
+                res.innerHTML = "<b>📡 ผลการสืบค้นข้อมูลจำลองสถิติสำหรับ '" + keyword + "':</b><br>" +
+                    "• <b>จำนวนรับรวมทุกรอบ:</b> 145 ที่นั่ง (รอบ 1: 45 | รอบ 2: 40 | รอบ 3: 60)<br>" +
+                    "• <b>คะแนนสูงสุดย้อนหลัง:</b> 81.20 คะแนน | <b>คะแนนต่ำสุดย้อนหลัง:</b> 63.50 คะแนน<br>" +
+                    "• <b>เกณฑ์วิชาคัดเลือก:</b> TGAT (30%) + TPAT (30%) + A-Level (40%)<br>" +
+                    "<span class=\"badge\">อัปเดตระบบสารสนเทศเสร็จสิ้น</span>";
+            }, 400);
+        }
+
+        // ปุ่ม 2: ระบบคำนวณเกรด 7 วิชา (ล็อกเดิม)
+        function calculateComplexGpax() {
+            var terms = document.getElementById('g-terms').value;
+            var subjects = [
+                { name: "คณิตศาสตร์", score: parseFloat(document.getElementById('g-math').value) || 0 },
+                { name: "ภาษาอังกฤษ", score: parseFloat(document.getElementById('g-eng').value) || 0 },
+                { name: "เคมี", score: parseFloat(document.getElementById('g-chem').value) || 0 },
+                { name: "ชีววิทยา", score: parseFloat(document.getElementById('g-bio').value) || 0 },
+                { name: "ฟิสิกส์", score: parseFloat(document.getElementById('g-physics').value) || 0 },
+                { name: "ภาษาไทย", score: parseFloat(document.getElementById('g-thai').value) || 0 },
+                { name: "สังคมศึกษา", score: parseFloat(document.getElementById('g-social').value) || 0 }
+            ];
+
+            for(var i=0; i<subjects.length; i++) {
+                if(subjects[i].score < 0 || subjects[i].score > 4) { alert('กรุณากรอกเกรดให้อยู่ในช่วง 0.00 - 4.00 นะอ้วน'); return; }
+            }
+
+            var totalScore = 0;
+            var maxSubject = subjects[0];
+            for(var j=0; j<subjects.length; j++) {
+                totalScore += subjects[j].score;
+                if(subjects[j].score > maxSubject.score) { maxSubject = subjects[j]; }
+            }
+            var gpax = totalScore / subjects.length;
+
+            var analysis = "";
+            if(maxSubject.name === "คณิตศาสตร์") { analysis = "คุณมีทักษะการคำนวณและตรรกศาสตร์ที่โดดเด่นมาก คณะที่เหมาะสมที่สุดคือ <b>คณะพาณิชยศาสตร์และบัญชี, คณะวิทยาศาสตร์ (สาขาคณิตศาสตร์/สถิติ), คณะเศรษฐศาสตร์ หรือ คณะเทคโนโลยีสารสนเทศ (IT)</b> เนื่องจากเป็นสายงานที่ต้องใช้การวิเคราะห์ตัวเลขและโครงสร้างข้อมูลเชิงปริมาณเป็นหลัก"; }
+            else if(maxSubject.name === "ภาษาอังกฤษ") { analysis = "คุณมีต้นทุนทักษะการสื่อสารสากลที่ยอดเยี่ยม คณะที่เหมาะสมที่สุดคือ <b>คณะอักษรศาสตร์, คณะมนุษยศาสตร์, คณะศิลปศาสตร์, คณะนิเทศศาสตร์ (หลักสูตรนานาชาติ) หรือ คณะรัฐศาสตร์ (สาขาความสัมพันธ์ระหว่างประเทศ)</b> เพื่อนำทักษะทางภาษาไปต่อยอดในการวิเคราะห์ข้อมูล วรรณกรรม หรือการทูตระดับสากล"; }
+            else if(maxSubject.name === "เคมี") { analysis = "คุณมีความเข้าใจในโครงสร้างสสารและการประยุกต์ใช้องค์ประกอบธาตุ คณะที่เหมาะสมที่สุดคือ <b>คณะเภสัชศาสตร์, คณะวิศวกรรมศาสตร์ (สาขาวิศวกรรมเคมี), คณะวิทยาศาสตร์ (สาขาเคมี) หรือ คณะอุตสาหกรรมเกษตร</b> เพราะกลุ่มนี้จำเป็นต้องใช้ความรู้แล็บและการควบคุมปฏิกิริยาเคมีเชิงลึก"; }
+            else if(maxSubject.name === "ชีววิทยา") { analysis = "คุณมีความจำเป็นเลิศและเข้าใจในกลไกของสิ่งมีชีวิต คณะที่เหมาะสมที่สุดคือ <b>คณะแพทยศาสตร์, คณะทันตแพทยศาสตร์, คณะสัตวแพทยศาสตร์, คณะสหเวชศาสตร์ หรือ คณะวิทยาศาสตร์การกีฬา</b> เนื่องจากคณะเหล่านี้เน้นการศึกษาโครงสร้าง สรีรวิทยา และระบบชีวภาพอย่างละเอียด"; }
+            else if(maxSubject.name === "ฟิสิกส์") { analysis = "คุณเข้าใจในกฎธรรมชาติ กลศาสตร์ และการคำนวณเชิงกายภาพ คณะที่เหมาะสมที่สุดคือ <b>คณะวิศวกรรมศาสตร์ (สาขาโยธา/ไฟฟ้า/เครื่องกล), คณะสถาปัตยกรรมศาสตร์ หรือ คณะวิทยาศาสตร์ (สาขาฟิสิกส์)</b> เพราะต้องใช้การคิดคำนวณความแข็งแรง โครงสร้าง และพลังงานในการออกแบบนวัตกรรม"; }
+            else if(maxSubject.name === "ภาษาไทย") { analysis = "คุณมีทักษะการใช้ภาษา การจับใจความ และวาทศิลป์ที่ชัดเจน คณะที่เหมาะสมที่สุดคือ <b>คณะนิติศาสตร์ (เน้นการตีความกฎหมาย), คณะนิเทศศาสตร์ (สาขาวารสารศาสตร์/การสื่อสาร), คณะครุศาสตร์ หรือ คณะโบราณคดี</b> ซึ่งเป็นสายอาชีพที่ต้องขับเคลื่อนด้วยการสื่อสารและการใช้ภาษาที่ทรงพลัง"; }
+            else if(maxSubject.name === "สังคมศึกษา") { analysis = "คุณมีความเข้าใจในโครงสร้างสังคม ประวัติศาสตร์ และพฤติกรรมมนุษย์ คณะที่เหมาะสมที่สุดคือ <b>คณะรัฐศาสตร์ (สาขาการปกครอง/บริหารรัฐกิจ), คณะสังคมวิทยาและมานุษยวิทยา, คณะนิติศาสตร์ หรือ คณะสังคมศาสตร์</b> เหมาะกับการทำงานที่เกี่ยวข้องกับการบริหารจัดการคน ชุมชน และข้อกฎหมาย"; }
+
+            var res = document.getElementById('res-gpax');
+            res.innerHTML = "<b>📊 ผลการประมวลคำนวณเกรดสะสมรวม (" + terms + "):</b><br>" +
+                "• เกรดเฉลี่ยสะสม 7 วิชาหลัก: <b style='font-size:18px; color:#4f46e5;'>" + gpax.toFixed(2) + "</b><br>" +
+                "• วิชาที่ทำคะแนนได้สูงสุด: <b style='color:#166534;'>" + maxSubject.name + " (" + maxSubject.score.toFixed(2) + ")</b><br><br>" +
+                "<b>💡 บทวิเคราะห์แนะนำคณะเข้าศึกษาต่อยุทธศาสตร์:</b><br>" + analysis;
+        }
+
+        // ปุ่ม 3: ระบบดึงเกณฑ์คะแนนรวมทุกคณะ อิงเกณฑ์ปี 69 (ล็อกเดิม)
+        function searchTcas69Criteria() {
+            var input = document.getElementById('search-criteria-input').value;
+            var res = document.getElementById('res-criteria');
+            if(!input) { alert('กรุณาพิมพ์ระบุคณะหรือสาขาที่ต้องการก่อนนะอ้วน'); return; }
+            res.innerHTML = "⏳ <i>ระบบฐานข้อมูลอัจฉริยะกำลังเก็บเกณฑ์และค่าน้ำหนักคะแนนของปี TCAS69...</i>";
+            setTimeout(function() {
+                res.innerHTML = "<b>📋 ผลการสกัดเกณฑ์วิชาและค่าน้ำหนักคะแนนเฉลี่ย [อิงระบบ TCAS69] สำหรับ '" + input + "':</b><br>" +
+                    "<table style='margin-top:10px;'>" +
+                    "<tr><th>ประเภทเกณฑ์วิชา</th><th>สัดส่วนค่าน้ำหนักยื่นคะแนนที่กำหนด</th><th>เงื่อนไขเกรดขั้นต่ำ (GPAX)</th></tr>" +
+                    "<tr><td><b>กลุ่มวิชาความถนัดทั่วไป (TGAT)</b></td><td>ค่าน้ำหนักร่วม 30% - 40% (เน้นการสื่อสารภาษาอังกฤษและเหตุผล)</td><td rowspan='3' style='vertical-align: middle; text-align: center;'><span class='badge'>ใช้ GPAX ขั้นต่ำ 2.00 หรือเทียบเท่า</span></td></tr>" +
+                    "<tr><td><b>กลุ่มความถนัดวิชาชีพ (TPAT)</b></td><td>ค่าน้ำหนัก 20% - 30% (ประเมินตามบริบททักษะสายงานคณะที่เลือก)</td></tr>" +
+                    "<tr><td><b>กลุ่มวิชาการสอบวิชาการ (A-Level)</b></td><td>ค่าน้ำหนัก 40% - 50% (ใช้คะแนนวิชาแกนหลักแยกตามสายวิทย์-ศิลป์)</td></tr>" +
+                    "</table><br>" +
+                    "⚠️ <i>หมายเหตุ: เกณฑ์นี้จำลองโครงสร้างสัดส่วนตามแนวทางประกาศเพื่อให้เด็กเตรียมสอบ TCAS69 วางแผนเก็บคะแนนล่วงหน้า</i>";
+            }, 400);
+        }
+
+        // ปุ่ม 4: ฟังก์ชันคำนวณสถิติจัดอันดับและวาดกราฟความเบี่ยงเบน (ล็อกเดิม)
+        function processRankings() {
+            var r1_name = document.getElementById('r1-name').value;
+            var r1_type = document.getElementById('r1-type').value;
+            var r2_name = document.getElementById('r2-name').value;
+            var r2_type = document.getElementById('r2-type').value;
+            var r3_name = document.getElementById('r3-name').value;
+            var r3_type = document.getElementById('r3-type').value;
+            var r4_name = document.getElementById('r4-name').value;
+            var r4_type = document.getElementById('r4-type').value;
+
+            if(!r1_name || !r2_name || !r3_name || !r4_name) { alert('กรอกชื่อคณะเป้าหมายให้ครบทั้ง 4 อันดับก่อนนะอ้วน'); return; }
+
+            var types = [r1_type, r2_type, r3_type, r4_type];
+            var countSci = 0, countMed = 0, countArt = 0;
+            for(var i=0; i<types.length; i++) {
+                if(types[i] === "sci") countSci++;
+                else if(types[i] === "med") countMed++;
+                else if(types[i] === "art") countArt++;
+            }
+
+            var pctSci = (countSci / 4) * 100;
+            var pctMed = (countMed / 4) * 100;
+            var pctArt = (countArt / 4) * 100;
+
+            var tableHtml = "<table>" +
+                "<tr><th>อันดับยุทธศาสตร์</th><th>ชื่อคณะ / มหาวิทยาลัย</th><th>กลุ่มสายวิชา</th></tr>" +
+                "<tr><td><b>อันดับ 1 (เป้าหมายสูงสุด)</b></td><td>" + r1_name + "</td><td>" + document.getElementById('r1-type').options[document.getElementById('r1-type').selectedIndex].text + "</td></tr>" +
+                "<tr><td><b>อันดับ 2 (สำรองสายแข็ง)</b></td><td>" + r2_name + "</td><td>" + document.getElementById('r2-type').options[document.getElementById('r2-type').selectedIndex].text + "</td></tr>" +
+                "<tr><td><b>อันดับ 3 (ปลอดภัยเซฟโซน)</b></td><td>" + r3_name + "</td><td>" + document.getElementById('r3-type').options[document.getElementById('r3-type').selectedIndex].text + "</td></tr>" +
+                "<tr><td><b>อันดับ 4 (ฐานมั่นคงกันหลุด)</b></td><td>" + r4_name + "</td><td>" + document.getElementById('r4-type').options[document.getElementById('r4-type').selectedIndex].text + "</td></tr>" +
+                "</table>";
+            document.getElementById('ranking-table-output').innerHTML = tableHtml;
+
+            document.getElementById('bar-sci').style.width = pctSci + "%";
+            document.getElementById('val-sci').innerText = pctSci + "%";
+            document.getElementById('bar-med').style.width = pctMed + "%";
+            document.getElementById('val-med').innerText = pctMed + "%";
+            document.getElementById('bar-art').style.width = pctArt + "%";
+            document.getElementById('val-art').innerText = pctArt + "%";
+
+            var finalConclusion = "";
+            if(countSci >= 3) { finalConclusion = "🎯 <b>วิเคราะห์ความเบี่ยงเบน:</b> ตัวตนของคุณเทน้ำหนักไปทาง <b>[สายวิศวกรรมศาสตร์และเทคโนโลยี] อย่างชัดเจน</b> แผนการเตรียมตัวหลักควรเน้นทำคะแนนสอบวิชา TPAT3 ความถนัดวิทยาศาสตร์เทคโนโลยี และ A-Level ฟิสิกส์/คณิตศาสตร์1 เป็นหลักเพื่อสร้างความได้เปรียบสูงสุด"; }
+            else if(countMed >= 3) { finalConclusion = "🩺 🎯 <b>วิเคราะห์ความเบี่ยงเบน:</b> ตัวตนของคุณมุ่งมั่นไปทาง <b>[สายแพทย์และสาธารณสุขชีวภาพ] สูงมาก</b> ยุทธศาสตร์สำคัญคือการพิชิตคะแนนสอบ TPAT1 ความถนัดแพทย์ และเก็บคะแนนเฉลี่ยกลุ่ม A-Level 7 วิชาหลักให้สม่ำเสมอ"; }
+            else if(countArt >= 3) { finalConclusion = "🎨 🎯 <b>วิเคราะห์ความเบี่ยงเบน:</b> ตัวตนของคุณเทใจไปทาง <b>[สายศิลป์ภาษามนุษยศาสตร์และสังคมศาสตร์] มั่นคงมาก</b> วิชาชี้ชะตาที่จะทำให้อันดับ 1 ติดชัวร์คือการทำคะแนนสอบหนีกลุ่มประชากรในวิชา TGAT และ A-Level ภาษาอังกฤษ/ภาษาไทย/สังคมศาสตร์"; }
+            else { finalConclusion = "⚖️ 🎯 <b>วิเคราะห์ความเบี่ยงเบน:</b> แผนการจัดอันดับของคุณเป็นแบบ <b>[ผสมผสานพหุปัญญา] (ไม่ได้เอียงไปฝั่งไหนเป็นพิเศษ)</b> สะท้อนว่าคุณกำลังเลือกระหว่างความชอบที่หลากหลาย แนะนำให้รีบตรวจสอบวิชาสอบที่ทับซ้อนกันเพื่อไม่ให้โหลดการอ่านหนังสือหนักเกินไปนะครับอ้วน"; }
+            
+            document.getElementById('chart-analysis-conclusion').innerHTML = finalConclusion;
+            document.getElementById('ranking-result-container').style.display = 'block';
+        }
+
+        // ปุ่ม 5: ระบบค้นหาตัวเองด้วยระบบ AI-Text Analysis (ตัวใหม่พิมพ์สรุปเองตามสั่ง!)
+        function analyzeSelfAI() {
+            var input = document.getElementById('ai-self-input').value.trim();
+            var res = document.getElementById('res-self');
+            
+            if(!input) { alert('พิมพ์บอกเล่าความชอบ ความถนัด หรือความฝันของอ้วนก่อนนะจ๊ะ'); return; }
+            
+            res.innerHTML = "⏳ <i>ระบบ AI จำลองกำลังอ่านข้อความวิเคราะห์คีย์เวิร์ดพฤติกรรมและความต้องการของคุณ...</i>";
+            
+            setTimeout(function() {
+                var text = input.toLowerCase();
+                var matchGroup = "";
+                var reasoning = "";
+                
+                // ระบบสแกนหาคีย์เวิร์ดในข้อความที่พิมพ์จริงแบบไดนามิก
+                if(text.includes('คอม') || text.includes('เกม') || text.includes('โค้ด') || text.includes('วิศวะ') || text.includes('เลข') || text.includes('คำนวณ') || text.includes('หุ่นยนต์')) {
+                    matchGroup = "📐 กลุ่มคณะวิศวกรรมศาสตร์, วิทยาศาสตร์เทคโนโลยี และไอที (IT)";
+                    reasoning = "เนื่องจากข้อความของคุณมีการเอ่ยถึงเทคโนโลยี โครงสร้างระบบ หรือการแก้ปัญหาเชิงตรรกะ ซึ่งเป็นหัวใจสำคัญของสายงานนวัตกรรม";
+                } else if(text.includes('หมอ') || text.includes('แพทย์') || text.includes('ยา') || text.includes('โรงพยาบาล') || text.includes('ฟัน') || text.includes('สัตว์') || text.includes('ชีวะ') || text.includes('คนไข้')) {
+                    matchGroup = "🩺 กลุ่มคณะแพทยศาสตร์, เภสัชศาสตร์, ทันตแพทย์ และวิทยาศาสตร์สุขภาพ";
+                    reasoning = "เนื่องจากความสนใจของคุณมุ่งเน้นไปที่ระบบกลไกของสิ่งมีชีวิต การดูแลรักษาสุขภาพ และการช่วยเหลือเพื่อนมนุษย์ตามหลักการแพทย์";
+                } else if(text.includes('วาด') || text.includes('ภาษา') || text.includes('อังกฤษ') || text.includes('เขียน') || text.includes('กฎหมาย') || text.includes('บริหาร') || text.includes('เงิน') || text.includes('บัญชี') || text.includes('การตลาด')) {
+                    matchGroup = "🎨 กลุ่มคณะพาณิชยศาสตร์และบัญชี, นิติศาสตร์, อักษรศาสตร์ หรือนิเทศศาสตร์";
+                    reasoning = "เนื่องจากคุณมีความโดดเด่นในด้านความคิดสร้างสรรค์ การจัดการธุรกิจ ข้อตกลงทางสังคม หรือการสื่อสารที่มีประสิทธิภาพ";
+                } else {
+                    matchGroup = "⚖️ กลุ่มคณะสหวิทยาการ หรือรัฐศาสตร์บริหารจัดการชุมชน";
+                    reasoning = "จากข้อความที่คุณบอกเล่ามา สะท้อนความชอบที่หลากหลายและมีความยืดหยุ่นสูง สามารถปรับตัวเข้ากับวิชาโครงสร้างเชิงสังคมและการทำงานร่วมกับผู้อื่นได้ดีเยี่ยม";
+                }
+                
+                res.innerHTML = "<b>🧩 ผลสรุปบทวิเคราะห์ AI จากข้อความที่คุณพิมพ์:</b><br>" +
+                    "• <b>วิเคราะห์เป้าหมายหลัก:</b> <span style='color:#4f46e5; font-weight:bold;'>" + matchGroup + "</span><br>" +
+                    "• <b>เหตุผลประกอบเชิงลึก:</b> " + reasoning + "<br><br>" +
+                    "💡 <i>คำแนะนำถัดไป: ลองนำกลุ่มคณะที่ได้นี้ไปลองจับคู่วางแผนยื่นคะแนนในปุ่มที่ 4 (ระบบบันทึกจัดอันดับ) ได้เลยนะอ้วน!</i>";
+            }, 500);
+        }
+
+        // ปุ่ม 6: ตรวจข้อสอบ (ล็อกเดิม)
+        function checkExam() {
+            var choice = document.querySelector('input[name="exam-q"]:checked');
+            if(!choice) { alert('คลิกเลือกคำตอบก่อนส่งนะอ้วน'); return; }
+            var res = document.getElementById('res-exam');
+            if(choice.value === "A") {
+                res.innerHTML = "<b style='color:#166534;'>🎉 ถูกต้องครับอ้วน! (ได้คะแนนเต็ม)</b><br><b>เฉลยละเอียด:</b> ตามเกณฑ์ของ ทปอ. ใบผลคะแนนสอบวิชาความถนัดทั่วไป (TGAT) จะมีอายุการใช้งานยาวนาน 2 ปีเต็ม เพื่อให้เด็กสามารถนำคะแนนไปใช้ยื่นคัดเลือกได้ยืดหยุ่น";
+            } else {
+                res.innerHTML = "<b style='color:#b91c1c;'>❌ คำตอบยังไม่ถูกจ้า ลองเลือกใหมีกทีนะอ้วน!</b>";
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div class="container">
+        <h1 style="color: #4f46e5; margin-bottom: 5px; font-size: 36px;">🎓 TCAS Hub 2026</h1>
+        <p style="color: #64748b; margin-top: 0; margin-bottom: 10px; font-size: 16px;">ศูนย์รวมเครื่องมือสารสนเทศและการวิเคราะห์ข้อมูลเพื่อการเตรียมตัวเข้ามหาวิทยาลัย</p>
+        
+        <div id="home" class="grid">
+            <button class="btn" onclick="openPage('p1')"><span>🔍</span><b>1. ค้นหาข้อมูลอัจฉริยะ</b><p>ดึงสถิติคะแนนและเกณฑ์รับรวมจากระบบฐานข้อมูลกลาง mytcas.com</p></button>
+            <button class="btn" onclick="openPage('p2')"><span>📊</span><b>2. คำนวณเกรด (GPAX)</b><p>กรอกประมวลผลแยกราย 7 วิชาหลัก พร้อมวิเคราะห์คณะตามจุดเด่นวิชา</p></button>
+            <button class="btn" onclick="openPage('p3')"><span>📋</span><b>3. ระบบดึงเกณฑ์คะแนนรวมทุกคณะ</b><p>พิมพ์ค้นหาทุกคณะ/สาขา เพื่อเรียกดูสัดส่วนเกณฑ์ค่าน้ำหนักคะแนนอิงปี 69</p></button>
+            <button class="btn" onclick="openPage('p4')"><span>📝</span><b>4. บันทึกจัดอันดับรายวัน</b><p>วิเคราะห์ระบบจำลองเลือก 4 อันดับยุทธศาสตร์พร้อมกราฟพล็อตความเบี่ยงเบนสายคณะ</p></button>
+            <button class="btn" onclick="openPage('p5')"><span>🧩</span><b>5. ระบบค้นหาตัวเอง</b><p>ระบบพิมพ์บรรยายความชอบ/ความถนัดแบบอิสระ พร้อมกลไก AI ถอดรหัสสรุปผลคณะให้ทันที</p></button>
+            <button class="btn" onclick="openPage('p6')"><span>✍️</span><b>6. ตะลุยแนวข้อสอบเก่า</b><p>จำลองทำข้อสอบควิซจริงพร้อมระบบเช็กคำตอบคำนวณคะแนนดิบและเฉลย</p></button>
+        </div>
+
+        <div id="p1" class="page">
+            <h2>🔍 1. ระบบค้นหาข้อมูลคณะและสถิติคะแนน (ดึงข้อมูลจากเว็บ ทปอ.)</h2>
+            <input type="text" id="search-keyword" placeholder="ตัวอย่างเช่น: คณะวิศวกรรมศาสตร์">
+            <button class="action-btn" onclick="fetchTcasData()">ดึงข้อมูลเชื่อมโยงเรียลไทม์</button>
+            <div id="res-search" class="result-box">กรอกข้อความแล้วกดปุ่มเพื่อดูตารางข้อมูล...</div>
+            <span class="back" onclick="goHome('p1')">← กลับหน้าหลักแดชบอร์ด</span>
+        </div>
+
+        <div id="p2" class="page">
+            <h2>📊 2. ระบบคำนวณเกรดเฉลี่ยรายวิชาและวิเคราะห์แนวทางคณะยุทธศาสตร์</h2>
+            <p style="color: #64748b;">เลือกจำนวนเทอมที่ต้องการคำนวณ และใส่เกรดเฉลี่ยของแต่ละวิชาเพื่อประมวลหาจุดเด่นและคณะที่เหมาะสม</p>
+            
+            <label><b>เลือกจำนวนเทอมที่ต้องการคำนวณคะแนน:</b></label>
+            <select id="g-terms">
+                <option value="1 เทอม">1 เทอม (เช่น ม.4 เทอม 1)</option>
+                <option value="2 เทอม">2 เทอม (เกรดเฉลี่ยรวม 1 ปีการศึกษา)</option>
+                <option value="4 เทอม">4 เทอม (เกรดเฉลี่ยรวม 2 ปีการศึกษา)</option>
+                <option value="5 เทอม">5 เทอม (สำหรับยื่นสมัครรอบพอร์ต/โควตา)</option>
+                <option value="6 เทอม">6 เทอม (เกรดเฉลี่ยสะสมจบหลักสูตร ม.ปลาย)</option>
+            </select>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
+                <div><label><b>1. วิชาคณิตศาสตร์:</b></label><input type="number" id="g-math" step="0.01" min="0" max="4" value="3.80"></div>
+                <div><label><b>2. วิชาภาษาอังกฤษ:</b></label><input type="number" id="g-eng" step="0.01" min="0" max="4" value="3.50"></div>
+                <div><label><b>3. วิชาเคมี:</b></label><input type="number" id="g-chem" step="0.01" min="0" max="4" value="3.20"></div>
+                <div><label><b>4. วิชาชีววิทยา:</b></label><input type="number" id="g-bio" step="0.01" min="0" max="4" value="3.00"></div>
+                <div><label><b>5. วิชาฟิสิกส์:</b></label><input type="number" id="g-physics" step="0.01" min="0" max="4" value="3.10"></div>
+                <div><label><b>6. วิชาภาษาไทย:</b></label><input type="number" id="g-thai" step="0.01" min="0" max="4" value="3.40"></div>
+            </div>
+            <div style="margin-top: 10px;"><label><b>7. วิชาสังคมศึกษา:</b></label><input type="number" id="g-social" step="0.01" min="0" max="4" value="3.30"></div>
+
+            <button class="action-btn" style="margin-top: 15px;" onclick="calculateComplexGpax()">ประมวลผลคำนวณและวิเคราะห์คณะที่ควรเข้า</button>
+            <div id="res-gpax" class="result-box">ตรวจสอบคะแนนเกรดเฉลี่ยด้านบน เลือกรอบเทอม แล้วกดปุ่มเพื่อดูสรุปผล...</div>
+            <span class="back" onclick="goHome('p2')">← กลับหน้าหลักแดชบอร์ด</span>
+        </div>
+
+        <div id="p3" class="page">
+            <h2>📋 3. ระบบสกัดเกณฑ์และสัดส่วนค่าน้ำหนักคะแนนรวมทุกคณะ [อิงเกณฑ์ปี TCAS69]</h2>
+            <p style="color: #64748b;">พิมพ์ระบุชื่อคณะ มหาวิทยาลัย หรือสาขาวิชาใดก็ได้ เพื่อดึงโครงสร้างน้ำหนักเกณฑ์ขั้นต่ำวิชาที่ใช้ประมวลผลคัดเลือก</p>
+            <input type="text" id="search-criteria-input" placeholder="ตัวอย่างเช่น: คณะบัญชี, สาขาวิทยาศาสตร์คอมพิวเตอร์, คณะอักษรศาสตร์">
+            <button class="action-btn" onclick="searchTcas69Criteria()">ดึงเกณฑ์ค่าน้ำหนักคะแนนปี 69</button>
+            <div id="res-criteria" class="result-box">พิมพ์ชื่อคณะหรือสายงานวิชาแล้วกดปุ่มเพื่อจำลองเกณฑ์ค่าน้ำหนัก...</div>
+            <span class="back" onclick="goHome('p3')">← กลับหน้าหลักแดชบอร์ด</span>
+        </div>
+
+        <div id="p4" class="page">
+            <h2>📝 4. ระบบจำลองวางแผนเลือกอันดับยุทธศาสตร์ & กราฟแท่งวิเคราะห์ความเบี่ยงเบน</h2>
+            <p style="color: #64748b; margin-bottom: 20px;">กรอกข้อมูลคณะเป้าหมายในฝันทั้ง 4 อันดับ และเลือกประเภทสายของคณะเพื่อดูทิศทางความเบี่ยงเบนวิชาสอบล่วงหน้า</p>
+            
+            <div style="background: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 4px solid #3b82f6;">
+                <label><b>อันดับที่ 1 (คณะเป้าหมายสูงสุด):</b></label>
+                <input type="text" id="r1-name" placeholder="เช่น คณะวิศวกรรมศาสตร์ สาขาคอมพิวเตอร์ จุฬาฯ" value="คณะวิศวกรรมคอมพิวเตอร์">
+                <label>สายของกลุ่มคณะอันดับ 1:</label>
+                <select id="r1-type"><option value="sci">สายวิศวกรรมศาสตร์ / เทคโนโลยี / คำนวณ</option><option value="med">สายแพทย์ / เภสัช / วิทยาศาสตร์สุขภาพ</option><option value="art">สายศิลป์ภาษา / นิติ / สังคมศึกษา / นิเทศ</option></select>
+            </div>
+
+            <div style="background: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 4px solid #10b981;">
+                <label><b>อันดับที่ 2 (คณะสำรองสายแข็ง):</b></label>
+                <input type="text" id="r2-name" placeholder="เช่น คณะเทคโนโลยีสารสนเทศ มจธ." value="คณะเทคโนโลยีสารสนเทศ">
+                <label>สายของกลุ่มคณะอันดับ 2:</label>
+                <select id="r2-type"><option value="sci">สายวิศวกรรมศาสตร์ / เทคโนโลยี / คำนวณ</option><option value="med">สายแพทย์ / เภสัช / วิทยาศาสตร์สุขภาพ</option><option value="art">สายศิลป์ภาษา / นิติ / สังคมศึกษา / นิเทศ</option></select>
+            </div>
+
+            <div style="background: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 4px solid #f59e0b;">
+                <label><b>อันดับที่ 3 (คณะปลอดภัยเซฟโซน):</b></label>
+                <input type="text" id="r3-name" placeholder="เช่น คณะวิทยาการคอมพิวเตอร์ มก." value="คณะวิทยาศาสตร์คอมพิวเตอร์">
+                <label>สายของกลุ่มคณะอันดับ 3:</label>
+                <select id="r3-type"><option value="sci">สายวิศวกรรมศาสตร์ / เทคโนโลยี / คำนวณ</option><option value="med">สายแพทย์ / เภสัช / วิทยาศาสตร์สุขภาพ</option><option value="art">สายศิลป์ภาษา / นิติ / สังคมศึกษา / นิเทศ</option></select>
+            </div>
+
+            <div style="background: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 4px solid #ef4444;">
+                <label><b>อันดับที่ 4 (คณะฐานมั่นคงกันหลุดรอบ):</b></label>
+                <input type="text" id="r4-name" placeholder="เช่น คณะมนุษยศาสตร์ สาขาภาษาอังกฤษ มศว" value="คณะนิติศาสตร์">
+                <label>สายของกลุ่มคณะอันดับ 4:</label>
+                <select id="r4-type" default="art"><option value="art">สายศิลป์ภาษา / นิติ / สังคมศึกษา / นิเทศ</option><option value="sci">สายวิศวกรรมศาสตร์ / เทคโนโลยี / คำนวณ</option><option value="med">สายแพทย์ / เภสัช / วิทยาศาสตร์สุขภาพ</option></select>
+            </div>
+
+            <button class="action-btn" onclick="processRankings()">กดบันทึกจัดอันดับและประมวลผลวิเคราะห์กราฟแท่ง</button>
+
+            <div id="ranking-result-container" style="display:none; margin-top: 25px;">
+                <h3>📊 ผลการจัดอันดับและสถิติกราฟความเบี่ยงเบนเป้าหมาย</h3>
+                <div id="ranking-table-output"></div>
+                
+                <div class="chart-container">
+                    <h4 style="margin-top:0; color:#1e293b;">📈 แผนภูมิจำลองความเบี่ยงเบนทิศทางสายวิชายุทธศาสตร์</h4>
+                    <div class="chart-row">
+                        <div class="chart-label"><span>📐 สายวิศวกรรมศาสตร์ / เทคโนโลยี / คำนวณ</span><span id="val-sci">0%</span></div>
+                        <div class="chart-bar-bg"><div id="bar-sci" class="chart-bar-fill" style="background:#3b82f6;"></div></div>
+                    </div>
+                    <div class="chart-row">
+                        <div class="chart-label"><span>🩺 สายแพทย์ / วิทยาศาสตร์สุขภาพ</span><span id="val-med">0%</span></div>
+                        <div class="chart-bar-bg"><div id="bar-med" class="chart-bar-fill" style="background:#10b981;"></div></div>
+                    </div>
+                    <div class="chart-row">
+                        <div class="chart-label"><span>🎨 สายศิลป์ภาษา / กฎหมาย / สังคมศาสตร์</span><span id="val-art">0%</span></div>
+                        <div class="chart-bar-bg"><div id="bar-art" class="chart-bar-fill" style="background:#f59e0b;"></div></div>
+                    </div>
+                    <div id="chart-analysis-conclusion" class="result-box" style="margin-top:15px; background:#f0fdf4; border-left-color:#166534; font-size:13.5px;"></div>
+                </div>
+            </div>
+
+            <span class="back" onclick="goHome('p4')">← กลับหน้าหลักแดชบอร์ด</span>
+        </div>
+
+        <div id="p5" class="page">
+            <h2>🧩 5. ระบบถอดรหัสความชอบและค้นหาตัวเองอัจฉริยะ (AI-Text Analysis)</h2>
+            <p style="color: #64748b; margin-bottom: 15px;">ให้อ้วนพิมพ์บอกเล่าความชอบ ความฝัน ทักษะ หรืองานอดิเรกที่ชอบทำลงในกล่องข้อความด้านล่างได้แบบอิสระเลย ระบบจะจำลองกระบวนการวิเคราะห์คีย์เวิร์ดพฤติกรรมแล้วสรุปแนวคณะที่ใช่ให้ทันทีจ้า</p>
+            
+            <label><b>พิมพ์บอกเล่าความเป็นตัวคุณที่นี่ได้เลยนะอ้วน:</b></label>
+            <textarea id="ai-self-input" placeholder="ตัวอย่างการพิมพ์: ผมชอบเล่นเกม วาดรูป และถนัดวิชาคณิตศาสตร์ อยากลองฝึกเขียนโค้ดสร้างแอปของตัวเองดูครับ..."></textarea>
+            
+            <button class="action-btn" onclick="analyzeSelfAI()">ส่งข้อความเพื่อให้ระบบ AI สรุปวิเคราะห์ผลคณะ</button>
+            <div id="res-self" class="result-box">พิมพ์ข้อความบรรยายสไตล์ความชอบของอ้วนแล้วกดปุ่มเพื่อดูสรุปผล...</div>
+            <span class="back" onclick="goHome('p5')">← กลับหน้าหลักแดชบอร์ด</span>
+        </div>
+
+        <div id="p6" class="page">
+            <h2>✍️ 6. ระบบคลังมินิควิซแนวข้อสอบความถนัดทั่วไปจำลอง</h2>
+            <div class="result-box" style="border-left-color: #ef4444; background: #fffdfd; margin-bottom: 20px;">
+                <b>❓ โจทย์:</b> "คะแนนสอบ TGAT ในปี 2026 จะมีอายุการใช้งานทั้งหมดกี่ปี?"
+            </div>
+            <label><input type="radio" name="exam-q" value="A"> <b>ก. มีอายุการใช้งานทั้งหมด 2 ปีเต็ม</b></label><br><br>
+            <label><input type="radio" name="exam-q" value="B"> <b>ข. มีอายุการใช้งานเพียง 1 ปี</b></label><br><br>
+            <button class="action-btn" onclick="checkExam()">ส่งคำตอบตรวจคะแนน</button>
+            <div id="res-exam" class="result-box">เลือกคำตอบแล้วกดส่งเพื่อดูเฉลยละเอียด...</div>
+            <span class="back" onclick="goHome('p6')">← กลับหน้าหลักแดชบอร์ด</span>
+        </div>
+
+    </div>
+
+</body>
+</html>
+เอาโค้ดที่จะเพิ่มมาเพิ่มใส่อันนี้
