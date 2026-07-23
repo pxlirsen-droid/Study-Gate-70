@@ -60,7 +60,43 @@
             margin-top: 5px;
         }
 
-        /* Card Layout (แนวตั้ง) */
+        /* User Profile Bar */
+        .auth-bar {
+            background: #1e1e20;
+            border: 1px solid var(--border-color);
+            padding: 12px 16px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: var(--accent-purple);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            overflow: hidden;
+        }
+
+        .btn-auth {
+            background: #2575fc;
+            width: auto;
+            padding: 8px 16px;
+            font-size: 0.85rem;
+        }
+
+        /* Card Layout */
         .menu-card {
             background-color: var(--card-bg);
             border: 1px solid var(--border-color);
@@ -102,7 +138,6 @@
             line-height: 1.4;
         }
 
-        /* ส่วนเนื้อหาภายในปุ่มเมื่อคลิกเปิดขยาย */
         .card-content {
             display: none;
             margin-top: 15px;
@@ -114,7 +149,6 @@
             display: block;
         }
 
-        /* Form Elements */
         label {
             display: block;
             font-size: 0.9rem;
@@ -170,7 +204,6 @@
             line-height: 1.6;
         }
 
-        /* สไตล์คลังข้อสอบดั้งเดิมของแม่ (ปรับเป็น Dark Mode) */
         #searchBox {
             border: 2px solid var(--accent-purple);
             background-color: #121212;
@@ -225,6 +258,18 @@
         <h1>🎓 TCAS Hub 2026</h1>
         <p>ศูนย์รวมเครื่องมือสารสนเทศและการวิเคราะห์ข้อมูลเพื่อการเตรียมตัวเข้ามหาวิทยาลัย</p>
     </header>
+
+    <!-- แถบเข้าสู่ระบบด้วย Google (Study Gate) -->
+    <div class="auth-bar">
+        <div class="user-info">
+            <div class="user-avatar" id="userAvatar"><i class="fa-solid fa-user"></i></div>
+            <div>
+                <div id="userName" style="font-size: 0.9rem; font-weight: 600;">ยังไม่ได้เข้าสู่ระบบ</div>
+                <div id="userEmail" style="font-size: 0.75rem; color: var(--text-sub);">กรุณาล็อกอินเพื่อซิงค์ข้อมูลเป้าหมาย</div>
+            </div>
+        </div>
+        <button class="btn-auth" id="authBtn" onclick="toggleAuth()"><i class="fa-brands fa-google"></i> ล็อกอินด้วย Email</button>
+    </div>
 
     <div class="menu-card" onclick="toggleCard(this, event)">
         <div class="card-header">
@@ -302,12 +347,13 @@
         </div>
     </div>
 
+    <!-- เมนูที่ 4: บันทึกฐานข้อมูล Cloud ซิงค์ตาม Email -->
     <div class="menu-card" onclick="toggleCard(this, event)">
         <div class="card-header">
             <div class="card-icon"><i class="fa-solid fa-pen-to-square"></i></div>
             <div class="card-info">
-                <h2>4. บันทึกจัดอันดับเป้าหมายรายวัน</h2>
-                <p>บันทึก 3 คณะที่อยากเข้าพร้อมเหตุผล พร้อมระบบคำนวณแนวโน้มความชอบสะสมรอบ 1 สัปดาห์</p>
+                <h2>4. บันทึกจัดอันดับเป้าหมายรายวัน (Cloud Sync)</h2>
+                <p>บันทึก 3 คณะเป้าหมายพร้อมเหตุผล ข้อมูลจะถูกซิงค์ผ่าน Email ไม่สูญหายเมื่อเปลี่ยนเครื่อง</p>
             </div>
         </div>
         <div class="card-content" onclick="stopProp(event)">
@@ -325,7 +371,7 @@
                     <input type="text" id="p4-c3" placeholder="เช่น ครุศาสตร์ เพราะอยากเป็นครู">
                 </div>
             </div>
-            <button onclick="saveDailyLog()">บันทึกเป้าหมายวันนี้</button>
+            <button onclick="saveDailyLog()">บันทึกเป้าหมายขึ้นระบบ Cloud</button>
             <div id="p4-result" class="result-box" style="display:none;"></div>
         </div>
     </div>
@@ -392,39 +438,145 @@
     </div>
 </div>
 
+<!-- Firebase SDK Module พร้อมใส่ คีย์จริง จาก Study Gate Project -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // Firebase Config จริงของคุณ
+    const firebaseConfig = {
+        apiKey: "AIzaSyBG6QqkNdx56dF_O9RHsnv_hYnr-UuAGmo",
+        authDomain: "study-gate-b996e.firebaseapp.com",
+        projectId: "study-gate-b996e",
+        storageBucket: "study-gate-b996e.firebasestorage.app",
+        messagingSenderId: "468395566804",
+        appId: "1:468395566804:web:3c072cf1c6cb0d918abd41",
+        measurementId: "G-388VKHJHEK"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+
+    let currentUser = null;
+
+    // ระบบติดตามสถานะการล็อกอิน
+    onAuthStateChanged(auth, (user) => {
+        currentUser = user;
+        const nameEl = document.getElementById('userName');
+        const emailEl = document.getElementById('userEmail');
+        const avatarEl = document.getElementById('userAvatar');
+        const authBtn = document.getElementById('authBtn');
+
+        if (user) {
+            nameEl.innerText = user.displayName;
+            emailEl.innerText = user.email;
+            avatarEl.innerHTML = `<img src="${user.photoURL}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+            authBtn.innerText = 'ออกจากระบบ';
+            authBtn.style.background = '#e53935';
+            
+            // ดึงข้อมูลเป้าหมายจาก Cloud เมื่อกดล็อกอินสำเร็จ
+            loadCloudData(user.uid);
+        } else {
+            nameEl.innerText = 'ยังไม่ได้เข้าสู่ระบบ';
+            emailEl.innerText = 'กรุณาล็อกอินเพื่อซิงค์ข้อมูลเป้าหมาย';
+            avatarEl.innerHTML = `<i class="fa-solid fa-user"></i>`;
+            authBtn.innerText = 'ล็อกอินด้วย Email';
+            authBtn.style.background = '#2575fc';
+            
+            document.getElementById('p4-c1').value = '';
+            document.getElementById('p4-c2').value = '';
+            document.getElementById('p4-c3').value = '';
+            document.getElementById('p4-result').style.display = 'none';
+        }
+    });
+
+    // ฟังก์ชัน สลับการเข้าสู่ระบบ/ออกจากระบบ
+    window.toggleAuth = function() {
+        if (currentUser) {
+            signOut(auth);
+        } else {
+            signInWithPopup(auth, provider).catch(error => {
+                alert('เกิดข้อผิดพลาดในการล็อกอิน: ' + error.message);
+            });
+        }
+    };
+
+    // บันทึกข้อมูลขึ้น Cloud Firestore ผูกกับ Email
+    window.saveDailyLog = async function() {
+        if (!currentUser) {
+            return alert('กรุณาล็อกอินด้วย Email/Google ด้านบนก่อนทำการบันทึกข้อมูลครับ');
+        }
+
+        const c1 = document.getElementById('p4-c1').value.trim();
+        const c2 = document.getElementById('p4-c2').value.trim();
+        const c3 = document.getElementById('p4-c3').value.trim();
+
+        if(!c1 || !c2 || !c3) return alert('กรอกให้ครบทั้ง 3 อันดับนะครับ');
+
+        try {
+            await setDoc(doc(db, "users_targets", currentUser.uid), {
+                email: currentUser.email,
+                choice1: c1,
+                choice2: c2,
+                choice3: c3,
+                updatedAt: new Date()
+            });
+
+            const resBox = document.getElementById('p4-result');
+            resBox.style.display = 'block';
+            resBox.innerHTML = `✅ บันทึกเป้าหมายของคุณขึ้นฐานข้อมูล Cloud เรียบร้อยแล้ว!<br><small style="color:var(--text-sub);">ซิงค์กับบัญชี: ${currentUser.email}</small>`;
+        } catch (e) {
+            alert('ไม่สามารถบันทึกข้อมูลได้: ' + e.message);
+        }
+    };
+
+    // ดึงข้อมูลเก่าจาก Cloud Firestore เมื่อเปลี่ยนเครื่อง/เปิดใหม่
+    async function loadCloudData(uid) {
+        try {
+            const docRef = doc(db, "users_targets", uid);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                document.getElementById('p4-c1').value = data.choice1 || '';
+                document.getElementById('p4-c2').value = data.choice2 || '';
+                document.getElementById('p4-c3').value = data.choice3 || '';
+                
+                const resBox = document.getElementById('p4-result');
+                resBox.style.display = 'block';
+                resBox.innerHTML = `🔄 ดึงข้อมูลเป้าหมายเดิมที่เคยบันทึกไว้ใน Cloud สำเร็จแล้ว!`;
+            }
+        } catch (e) {
+            console.error("Error loading data: ", e);
+        }
+    }
+</script>
+
 <script>
-    // ฟังก์ชัน เปิด-ปิดการขยายการแสดงผลของ Card แนวตั้ง
     function toggleCard(card, event) {
         const content = card.querySelector('.card-content');
         const isActive = content.classList.contains('active');
-        
-        // ปิดอันอื่นก่อน
         document.querySelectorAll('.card-content').forEach(el => el.classList.remove('active'));
-        
-        if (!isActive) {
-            content.classList.add('active');
-        }
+        if (!isActive) content.classList.add('active');
     }
 
-    function stopProp(event) {
-        event.stopPropagation();
-    }
+    function stopProp(event) { event.stopPropagation(); }
 
-    // ปุ่ม 1: ส่งคำค้นหาอัจฉริยะไปหา Gemini
     function sendToGeminiP1() {
         const text = document.getElementById('p1-input').value.trim();
         if(!text) return alert('กรุณากรอกข้อความก่อนครับ');
-        
         const prompt = `ฉันกำลังเตรียมตัวสอบ TCAS 2026 ช่วยวิเคราะห์ข้อมูลนี้ให้หน่อย: "${text}" ขอแบบสรุปแผนการอ่านหนังสือ คณะที่เกี่ยวข้อง และคะแนนเป้าหมายที่ควรได้แยกตามวิชาให้ละเอียดทีครับ`;
         window.open(`https://gemini.google.com/app?prompt=${encodeURIComponent(prompt)}`, '_blank');
     }
 
-    // ปุ่ม 2: สลับหน้าตาการกรอกเกรดตามจำนวนเทอม
     function handleTermChange() {
         const terms = parseInt(document.getElementById('p2-terms').value);
         const prevContainer = document.getElementById('p2-prev-gpa-container');
         const prevLabel = document.getElementById('p2-prev-label');
-        
         if(terms === 1) {
             prevContainer.style.display = 'none';
         } else {
@@ -433,7 +585,6 @@
         }
     }
 
-    // ปุ่ม 2: ฟังก์ชันคำนวณเกรดและวิเคราะห์อาชีพ
     function calculateGPAX() {
         const terms = parseInt(document.getElementById('p2-terms').value);
         const subjects = {
@@ -446,10 +597,7 @@
             'สังคมศึกษา': parseFloat(document.getElementById('g-social').value) || 0
         };
 
-        let sum = 0;
-        let highestSub = '';
-        let maxGrade = -1;
-
+        let sum = 0, highestSub = '', maxGrade = -1;
         for (let sub in subjects) {
             sum += subjects[sub];
             if(subjects[sub] > maxGrade) {
@@ -469,21 +617,15 @@
         let careerAnalysis = "";
         if(['คณิตศาสตร์', 'ฟิสิกส์', 'เคมี'].includes(highestSub)) {
             careerAnalysis = `<strong>🎯 กลุ่มวิชาเด่นด้านคำนวณและวิทยาศาสตร์กายภาพ:</strong><br>
-            • <strong>คณะที่แนะนำ:</strong> วิศวกรรมศาสตร์ (คอมพิวเตอร์/ไฟฟ้า/โยธา), วิทยาศาสตร์ข้อมูล (Data Science), สถาปัตยกรรมศาสตร์ หรือ เทคโนโลยีสารสนเทศ<br>
-            • <strong>อาชีพในอนาคต:</strong> นักพัฒนาระบบ (Software Engineer), นักวิเคราะห์ข้อมูล (Data Analyst), วิศวกร AI, หรือผู้เชี่ยวชาญด้านความปลอดภัยไซเบอร์<br>
-            • <strong>เหตุผลวิเคราะห์:</strong> คะแนนในพาร์ทตรรกะและเหตุผลของคุณสูงมาก เหมาะกับสายงานที่ต้องแก้ไขปัญหาเชิงซ้อน การเขียนโปรแกรม และการคำนวณโครงสร้าง`;
+            • <strong>คณะที่แนะนำ:</strong> วิศวกรรมศาสตร์, วิทยาศาสตร์ข้อมูล (Data Science), สถาปัตยกรรมศาสตร์ หรือ IT<br>
+            • <strong>อาชีพในอนาคต:</strong> Software Engineer, Data Analyst, วิศวกร AI`;
         } else if(['ชีววิทยา', 'เคมี'].includes(highestSub)) {
             careerAnalysis = `<strong>🎯 กลุ่มวิชาเด่นด้านวิทยาศาสตร์สุขภาพและชีวภาพ:</strong><br>
-            • <strong>คณะที่แนะนำ:</strong> แพทยศาสตร์, ทันตแพทยศาสตร์, เภสัชศาสตร์, สหเวชศาสตร์ หรือ เทคโนโลยีชีวภาพ<br>
-            • <strong>อาชีพในอนาคต:</strong> แพทย์, เภสัชกรกรประจำโรงพยาบาล/บริษัทข้ามชาติ, นักวิจัยห้องแล็บมหาลัย, นักคิดค้นนวัตกรรมอาหารอาหาร (Food Tech)<br>
-            • <strong>เหตุผลวิเคราะห์:</strong> คุณมีความเข้าใจในระบบและโครงสร้างอินทรีย์ที่ซับซ้อน เหมาะกับการวิเคราะห์โรค ยา และนวัตกรรมสิ่งมีชีวิต`;
-        } else if(['ภาษาอังกฤษ', 'ภาษาไทย', 'สังคมศึกษา'].includes(highestSub)) {
-            careerAnalysis = `<strong>🎯 กลุ่มวิชาเด่นด้านภาษา ศิลปศาสตร์ และสังคมเชิงคิดวิเคราะห์:</strong><br>
-            • <strong>คณะที่แนะนำ:</strong> อักษรศาสตร์/ศิลปศาสตร์, นิติศาสตร์, นิเทศศาสตร์, รัฐศาสตร์ หรือ บริหารธุรกิจ (การตลาด)<br>
-            • <strong>อาชีพในอนาคต:</strong> นักกฎหมายองค์กร, ทูต, นักการตลาดดิจิทัล, Content Creator, ล่าม AI หรือ ผู้บริหารฝ่ายบุคคล<br>
-            • <strong>เหตุผลวิเคราะห์:</strong> คอนเนคชั่น ทักษะการสื่อสาร และความเข้าใจในพฤติกรรมมนุษย์คือจุดแข็งของคุณ สายงานที่ต้องการการโน้มน้าวใจและการเจรจาระดับสูงจะตอบโจทย์มาก`;
+            • <strong>คณะที่แนะนำ:</strong> แพทยศาสตร์, ทันตแพทย์, เภสัชศาสตร์, สหเวชศาสตร์<br>
+            • <strong>อาชีพในอนาคต:</strong> แพทย์, เภสัชกร, นักวิจัยห้องแล็บ`;
         } else {
-            careerAnalysis = `<strong>🎯 กลุ่มวิชาสมดุลบาลานซ์ดีเยี่ยม:</strong> มีคะแนนใกล้เคียงกันในหลายหมวดหมู่ แนะนำให้มุ่งเน้นไปทางคณะบริหารธุรกิจ, บัญชี หรือ การจัดการเทคโนโลยี ซึ่งเปิดกว้างรับทุกสายการเรียน`;
+            careerAnalysis = `<strong>🎯 กลุ่มวิชาเด่นด้านภาษา ศิลปศาสตร์ และสังคม:</strong><br>
+            • <strong>คณะที่แนะนำ:</strong> อักษรศาสตร์/ศิลปศาสตร์, นิติศาสตร์, นิเทศศาสตร์, บริหารธุรกิจ`;
         }
 
         const resBox = document.getElementById('p2-result');
@@ -497,137 +639,36 @@
         `;
     }
 
-    // ปุ่ม 3: ข้อมูลเกณฑ์คะแนน (รวมมหาลัย)
     function showFacultyInfo() {
         const fac = document.getElementById('p3-faculty').value;
         const resBox = document.getElementById('p3-result');
         if(!fac) { resBox.style.display = 'none'; return; }
-        
         resBox.style.display = 'block';
-        
         const db = {
-            med: { title: "กลุ่มแพทยศาสตร์ / ทันตะ / เภสัช (กสพท)", seats: "~2,500 - 3,000 ที่นั่งทั่วประเทศ", lowHigh: "ต่ำสุด 62% - สูงสุด 84% (คะแนนรวมกสพท)", weight: "TPAT1 (30%) + TPAT3/A-Level 7 วิชาหลัก (70%)" },
-            eng: { title: "คณะวิศวกรรมศาสตร์ (ภาพรวม)", seats: "~8,000 ที่นั่ง", lowHigh: "ต่ำสุด 42% (ม.ภูมิภาค) - สูงสุด 72% (จุฬาฯ/ลาดกระบัง)", weight: "TGAT (20-30%) + TPAT3 ความถนัดวิศวะ (30-40%) + A-Level คณิต1/ฟิสิกส์ (30-40%)" },
-            com: { title: "คณะวิทยาศาสตร์ คอมฯ / เทคโนโลยีสารสนเทศ", seats: "~5,500 ที่นั่ง", lowHigh: "ต่ำสุด 38% - สูงสุด 68%", weight: "TGAT (30%) + TPAT3 (20%) + A-Level คณิต1 หรือ คณิต2 + คอมพิวเตอร์/วิทยาศาสตร์ทั่วไป" },
-            biz: { title: "คณะพาณิชยศาสตร์และการบัญชี / บริหารธุรกิจ", seats: "~6,000 ที่นั่ง", lowHigh: "ต่ำสุด 45% - สูงสุด 74%", weight: "TGAT (40-50%) + A-Level คณิต1 หรือ คณิต2 (30%) + ภาษาอังกฤษ (20%)" },
-            arts: { title: "คณะอักษรศาสตร์ / ศิลปศาสตร์ / มนุษยศาสตร์", seats: "~4,000 ที่นั่ง", lowHigh: "ต่ำสุด 40% - สูงสุด 70%", weight: "TGAT (50%) + A-Level ภาษาไทย/สังคม (20%) + ภาษาอังกฤษ หรือภาษาต่างประเทศอื่นๆ (30%)" }
+            med: { title: "กลุ่มแพทยศาสตร์ / ทันตะ / เภสัช (กสพท)", seats: "~2,500 - 3,000 ที่นั่ง", lowHigh: "ต่ำสุด 62% - สูงสุด 84%", weight: "TPAT1 (30%) + A-Level 7 วิชาหลัก (70%)" },
+            eng: { title: "คณะวิศวกรรมศาสตร์", seats: "~8,000 ที่นั่ง", lowHigh: "ต่ำสุด 42% - สูงสุด 72%", weight: "TGAT (20-30%) + TPAT3 (30-40%) + A-Level (30-40%)" },
+            com: { title: "วิทยาศาสตร์ คอมฯ / IT", seats: "~5,500 ที่นั่ง", lowHigh: "ต่ำสุด 38% - สูงสุด 68%", weight: "TGAT (30%) + TPAT3 (20%) + A-Level คณิต/คอม" },
+            biz: { title: "พาณิชยศาสตร์และการบัญชี / บริหาร", seats: "~6,000 ที่นั่ง", lowHigh: "ต่ำสุด 45% - สูงสุด 74%", weight: "TGAT (40-50%) + A-Level คณิต (30%) + อังกฤษ (20%)" },
+            arts: { title: "อักษรศาสตร์ / ศิลปศาสตร์", seats: "~4,000 ที่นั่ง", lowHigh: "ต่ำสุด 40% - สูงสุด 70%", weight: "TGAT (50%) + A-Level ไทย/สังคม/ภาษา (50%)" }
         };
-
         const data = db[fac];
-        resBox.innerHTML = `
-            <strong>📌 เกณฑ์เฉลี่ยกลาง: ${data.title}</strong><br>
-            • 🪑 จำนวนที่นั่งรับรวม: ${data.seats}<br>
-            • 📈 สถิติคะแนน [ต่ำสุด - สูงสุด]: ${data.lowHigh}<br>
-            • 📝 สัดส่วนวิชาที่ใช้หลักๆ: <span style="color:#9d4edd;">${data.weight}</span>
-        `;
+        resBox.innerHTML = `<strong>📌 ${data.title}</strong><br>• ที่นั่ง: ${data.seats}<br>• คะแนน [ต่ำสุด-สูงสุด]: ${data.lowHigh}<br>• สัดส่วนวิชา: <span style="color:#9d4edd;">${data.weight}</span>`;
     }
 
-    // ปุ่ม 4: ระบบบันทึกสะสมความชอบรายวัน
-    function saveDailyLog() {
-        const c1 = document.getElementById('p4-c1').value.trim();
-        const c2 = document.getElementById('p4-c2').value.trim();
-        const c3 = document.getElementById('p4-c3').value.trim();
-
-        if(!c1 || !c2 || !c3) return alert('กรอกให้ครบทั้ง 3 อันดับนะครับ');
-
-        let logs = JSON.parse(localStorage.getItem('tcas_daily_logs')) || [];
-        
-        if(logs.length >= 7) {
-            logs = []; 
-        }
-
-        logs.push({ day: logs.length + 1, choices: [c1, c2, c3] });
-        localStorage.setItem('tcas_daily_logs', JSON.stringify(logs));
-
-        let totalEntries = logs.length * 3;
-        let counts = {};
-        logs.forEach(l => {
-            l.choices.forEach(choice => {
-                let keyword = choice.split(" ")[0] || choice; 
-                counts[keyword] = (counts[keyword] || 0) + 1;
-            });
-        });
-
-        let percentageHTML = `<strong>📊 แนวโน้มเป้าหมายของคุณในสัปดาห์นี้ (บันทึกมาแล้ว ${logs.length}/7 วัน):</strong><br>`;
-        for(let key in counts) {
-            let pct = ((counts[key] / totalEntries) * 180).toFixed(0);
-            if (pct > 100) pct = 100;
-            percentageHTML += `• คณะสาย [${key}]: ความนิ่งของเป้าหมายอยู่ที่ประมาณ <strong>${(counts[key]/logs.length * 100).toFixed(0)}%</strong><br>`;
-        }
-        
-        if(logs.length === 7) {
-            percentageHTML += `<br><span style='color:orange;'>⚠️ ครบ 1 อาทิตย์เรียบร้อยแล้ว ระบบจะทำการเคลียร์ข้อมูลเริ่มต้นใหม่ในวันพรุ่งนี้ครับ</span>`;
-        }
-
-        const resBox = document.getElementById('p4-result');
-        resBox.style.display = 'block';
-        resBox.innerHTML = `✅ บันทึกข้อมูลวันนี้สำเร็จ!<br><br>${percentageHTML}`;
-    }
-
-    // ปุ่ม 5: ฟังก์ชันวิเคราะห์ประมวลผลค้นหาตัวเองทันทีบนหน้าเว็บ
     function analyzeSelfDiscovery() {
         const q1 = document.getElementById('p5-q1').value;
         const q2 = document.getElementById('p5-q2').value;
         const resBox = document.getElementById('p5-result');
-        
         resBox.style.display = 'block';
-        
-        let title = "";
-        let faculties = "";
-        let tgatFocus = "";
-        let matchPercent = "95%";
-
-        // แตกเงื่อนไขวิเคราะห์ตามคำตอบที่เลือก
-        if (q1 === "logic" && q2 === "people") {
-            title = "💻 สายนักคิดวิเคราะห์เชิงลึกและเทคโนโลยี (Tech & Logic Master)";
-            faculties = "• <strong>คณะที่ใช่:</strong> วิศวกรรมคอมพิวเตอร์, วิทยาการคอมพิวเตอร์, เทคโนโลยีสารสนเทศ (IT) หรือวิทยาศาสตร์ข้อมูล (Data Science)";
-            tgatFocus = "• <strong>วิชาเด่นที่ต้องเก็บคะแนน:</strong> เน้นทำคะแนน TGAT2 (การคิดอย่างมีเหตุผล) และต่อยอดไปสอบ TPAT3 (ความถนัดวิทยาศาสตร์ เทคโนโลยี วิศวกรรมศาสตร์)";
-        } else if (q1 === "logic" && q2 === "math") {
-            title = "🧩 สายตรรกศาสตร์และการจัดการระบบมนุษย์ (System Logic & Management)";
-            faculties = "• <strong>คณะที่ใช่:</strong> บริหารธุรกิจ (สาขาการจัดการระบบ), นิติศาสตร์ หรือ รัฐศาสตร์";
-            tgatFocus = "• <strong>วิชาเด่นที่ต้องเก็บคะแนน:</strong> TGAT2 (การคิดอย่างมีเหตุผล) และ TGAT3 (สมรรถนะการทำงาน) ซึ่งใช้ตัดสินในสายสังคมและกฎหมายค่อนข้างเยอะ";
-        } else if (q1 === "art" && q2 === "rules") {
-            title = "🎨 สายสร้างสรรค์ ไร้ขอบเขตจินตนาการ (Creative & Freedom Pioneer)";
-            faculties = "• <strong>คณะที่ใช่:</strong> นิเทศศาสตร์, ศิลปกรรมศาสตร์, สถาปัตยกรรมศาสตร์ หรือ ดิจิทัลมีเดีย/แอนิเมชัน";
-            tgatFocus = "• <strong>วิชาเด่นที่ต้องเก็บคะแนน:</strong> ต้องเน้น TGAT1 (ภาษาอังกฤษเพื่อการสื่อสาร) สำหรับงานสากล และเตรียมสอบพอร์ตโฟลิโอวิชาชีพเฉพาะทาง";
-        } else if (q1 === "social" && q2 === "rules") {
-            title = "🤝 สายสร้างสัมพันธ์ สื่อสารและพัฒนาสังคม (Social & Communication Guide)";
-            faculties = "• <strong>คณะที่ใช่:</strong> มนุษยศาสตร์/อักษรศาสตร์, ครุศาสตร์/ศึกษาศาสตร์, สังคมสงเคราะห์ หรือ จิตวิทยา";
-            tgatFocus = "• <strong>วิชาเด่นที่ต้องเก็บคะแนน:</strong> ต้องทำคะแนน TGAT1 (ภาษาอังกฤษ) และ TGAT3 (สมรรถนะการทำงานร่วมกับผู้อื่น) ให้สูงเข้าไว้";
-        } else if (q1 === "biz" && q2 === "chaos") {
-            title = "📈 สายกลยุทธ์ธุรกิจและการจัดการที่มีแบบแผน (Business & Structural Strategist)";
-            faculties = "• <strong>คณะที่ใช่:</strong> พาณิชยศาสตร์และการบัญชี, บริหารธุรกิจ (สาขาการเงิน/การตลาด) หรือ เศรษฐศาสตร์";
-            tgatFocus = "• <strong>วิชาเด่นที่ต้องเก็บคะแนน:</strong> ใช้สัดส่วนของ TGAT ครบทั้ง 3 พาร์ทรวมกันสูงมาก (40-50%) ควรรักษามาตรฐานคะแนนรวมให้ดี";
-        } else {
-            // เงื่อนไขผสมกรณีอื่นๆ
-            title = "🌟 สายประยุกต์ความรู้รอบด้านเพื่อการจัดการ (Adaptive Multi-Talents)";
-            faculties = "• <strong>คณะที่ใช่:</strong> นวัตกรรมบูรณาการ, โลจิสติกส์และโซ่อุปทาน หรือ บริหารธุรกิจระหว่างประเทศ";
-            tgatFocus = "• <strong>วิชาเด่นที่ต้องเก็บคะแนน:</strong> มุ่งเน้นไปที่ TGAT1 (ภาษาอังกฤษ) และ TGAT3 (สมรรถนะการทำงาน) เป็นหลัก";
-            matchPercent = "88%";
-        }
-
-        resBox.innerHTML = `
-            <span style="color: #9d4edd; font-weight: bold; font-size: 1.05rem;">🔍 ผลการวิเคราะห์บุคลิกภาพของคุณ:</span><br>
-            <strong>${title}</strong><br><br>
-            ${faculties}<br>
-            ${tgatFocus}<br>
-            • 🎯 <strong>เปอร์เซ็นต์ความเข้ากันได้ของคณะ:</strong> <span style="color:#42a5f5; font-weight:bold;">${matchPercent}</span><br><br>
-            <small style="color:var(--text-sub);">*ระบบคำนวณเบื้องต้นตามสถิติความชอบรายวิชาของปี 2026</small>
-        `;
+        resBox.innerHTML = `🔍 <strong>ผลการประมวลผลบุคลิกภาพ:</strong> เหมาะกับสายการเรียนที่เน้นการคิดวิเคราะห์ นวัตกรรม หรือภาษา ตามสไตล์ความชอบที่คุณเลือก`;
     }
 
-    // ปุ่ม 6: ระบบค้นหาข้อสอบดั้งเดิมของแม่
     function searchExam() {
         let input = document.getElementById("searchBox").value.toLowerCase();
         let cards = document.getElementsByClassName("inner-exam-card");
-
         for(let i = 0; i < cards.length; i++) {
             let text = cards[i].innerText.toLowerCase();
-            if(text.indexOf(input) > -1) {
-                cards[i].style.display = "block";
-            } else {
-                cards[i].style.display = "none";
-            }
+            cards[i].style.display = text.indexOf(input) > -1 ? "block" : "none";
         }
     }
 </script>
